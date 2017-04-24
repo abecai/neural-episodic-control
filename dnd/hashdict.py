@@ -88,11 +88,11 @@ class HashDND(object):
 
     def _summarise_pressure(self):
         """add summaries for the load. It would be nice to have this
-        per-bucket, but there is potentially a lot of buckets."""
+        per-bucket, but there are potentially a lot of buckets."""
         with tf.name_scope(self._name + '/stats'):
             used_keys = tf.not_equal(self._keys[:, 0], self.sentinel_value)
-            filled_keys = tf.reduce_sum(tf.cast(used_keys, tf.float32))
-            tf.summary.scalar('total_fill', filled_keys)
+            filled_keys = tf.reduce_mean(tf.cast(used_keys, tf.float32))
+            tf.summary.scalar('fill_rate', filled_keys)
 
     def _get_bucket(self, key):
         """look up the contents of a bucket by hash. Also return the bucket
@@ -223,10 +223,11 @@ class HashDND(object):
             # where the keys are sentinel, mask it out
             used_positions = tf.not_equal(bucket_keys[:, 0],
                                           self.sentinel_value)
-            num_used = tf.reduce_sum(tf.cast(used_positions, tf.int32))
             values = [tf.boolean_mask(val, used_positions)
                       for val in bucket_values]
             similarities = tf.boolean_mask(similarities, used_positions)
+            # normalise them to sum to one, and maybe give them a kick
+            similarities /= tf.reduce_sum(similarities)
 
             results = tuple(self._get_averaged_value(val, similarities)
                             for val in values)
